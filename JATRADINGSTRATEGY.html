@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>JA Trading Strategy — EMA 9 & EMA 15</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#0a0c10;
+      --panel:#12151c;
+      --muted:#9aa3ad;
+      --accent1:#7c3aed;
+      --accent2:#e04b4b;
+      --accent3:#10b981;
+      --glass: rgba(255,255,255,0.03);
+      --radius:16px;
+      --max-width:1200px;
+      font-family: 'Poppins', sans-serif;
+    }
+    html,body{height:100%;background:linear-gradient(160deg,#0a0c10 0%,#111318 100%);color:#f1f5f9;margin:0}
+    h1,h2,h3{font-weight:700;letter-spacing:0.5px;color:#fff}
+    .hero{min-height:140px;display:flex;align-items:center;padding:28px;background:linear-gradient(135deg,var(--accent1),var(--accent2));color:#fff;}
+    .container{max-width:var(--max-width);margin:18px auto;padding:18px}
+    .title{display:flex;gap:16px;align-items:center}
+    .logo{width:70px;height:70px;border-radius:18px;background:linear-gradient(135deg,#9333ea,#f43f5e);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:26px;box-shadow:0 6px 30px rgba(0,0,0,0.6)}
+    h1{margin:0;font-size:28px}
+    .grid{display:grid;grid-template-columns:1fr 380px;gap:18px;margin-top:18px}
+    .card{background:var(--panel);border-radius:var(--radius);padding:18px;margin-bottom:16px;box-shadow:0 6px 22px rgba(2,6,23,0.6);border:1px solid rgba(255,255,255,0.05)}
+    .panel-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-weight:600;color:var(--accent1)}
+    .muted{color:var(--muted);font-size:13px}
+    button{background:var(--accent1);border:none;color:#fff;padding:6px 12px;margin-left:6px;border-radius:8px;cursor:pointer;font-size:14px;transition:0.2s;font-weight:600;}
+    button:hover{background:#6d28d9}
+    .rule-btn{background:var(--accent2)}
+    .rule-btn:hover{background:#b91c1c}
+    .stats{display:flex;gap:16px;flex-wrap:wrap;margin:10px 0}
+    .stat{flex:1;min-width:140px;padding:16px;border-radius:var(--radius);text-align:center;font-weight:600;}
+    .green{background:rgba(16,185,129,0.1);color:#10b981;border:1px solid #10b981}
+    .red{background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid #ef4444}
+    .blue{background:rgba(59,130,246,0.1);color:#3b82f6;border:1px solid #3b82f6}
+    table{width:100%;border-collapse:collapse;margin-top:10px;font-size:14px}
+    th,td{padding:8px;text-align:center;border-bottom:1px solid #222;}
+    input,select{padding:6px 8px;border-radius:8px;border:none;margin:4px;background:#1e2128;color:#f1f5f9;}
+    canvas{background:#0f1113;border-radius:var(--radius);padding:8px;margin-top:12px}
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="container" style="padding:0;">
+      <div class="title">
+        <div class="logo">JA</div>
+        <div>
+          <h1>JA Trading Strategy — EMA 9 & EMA 15</h1>
+          <div>5 Minute Timeframe • Price Action + EMA Retest</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="grid">
+      <section>
+        <div class="card">
+          <div class="panel-title"><strong>Strategy Rules</strong></div>
+          <ul id="rules" class="rule-list"></ul>
+          <input type="text" id="newRule" placeholder="Add new rule..." style="width:70%;" />
+          <button onclick="addRule()">Add Rule</button>
+        </div>
+
+        <div class="card">
+          <h2>📊 Strategy Performance Tracker</h2>
+          <div class="stats">
+            <div class="stat blue">Total Trades: <span id="total">0</span></div>
+            <div class="stat green">Wins: <span id="wins">0</span></div>
+            <div class="stat red">Losses: <span id="losses">0</span></div>
+            <div class="stat blue">Win Rate: <span id="rate">0%</span></div>
+          </div>
+          <input type="date" id="date">
+          <input type="text" id="pair" placeholder="Pair">
+          <select id="direction"><option>Long</option><option>Short</option></select>
+          <select id="result"><option value="Win">Win</option><option value="Loss">Loss</option></select>
+          <input type="number" id="pnl" placeholder="P/L">
+          <button onclick="addTrade()">Add Trade</button>
+          <table>
+            <thead><tr><th>Date</th><th>Pair</th><th>Dir</th><th>Result</th><th>P/L</th><th>Action</th></tr></thead>
+            <tbody id="tradeTable"></tbody>
+          </table>
+          <canvas id="equityChart" height="100"></canvas>
+          <canvas id="winLossChart" height="100"></canvas>
+        </div>
+      </section>
+
+      <aside>
+        <div class="card">
+          <div class="panel-title"><strong>Quick Checklist</strong></div>
+          <ul>
+            <li>EMA trend confirmed?</li>
+            <li>Crossover + retest?</li>
+            <li>Confirming candle?</li>
+            <li>SL placed correctly?</li>
+            <li>TP = 2 × SL?</li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <div class="panel-title"><strong>Example Trade</strong></div>
+          <p>Long Example: EMA9 crossed above EMA15. Retest confirmed with hammer. Enter on close. SL = hammer low. TP = 2×SL. ✅ Target hit.</p>
+        </div>
+
+        <div class="card">
+          <div class="panel-title"><strong>Journal Template</strong></div>
+          <pre>[Date] – [Pair] – [Long/Short]
+Entry: [price]
+SL: [price]
+TP: [price]
+Outcome: [Win/Loss]
+Notes: [reason + observation]</pre>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <script>
+    // --- Rules ---
+    function removeRule(btn){btn.parentElement.remove();saveRules();}
+    function addRule(){
+      const text=document.getElementById('newRule').value.trim();
+      if(text){
+        const li=document.createElement('li');li.className='rule-item';
+        li.innerHTML=`<span class="rule-text">${text}</span><button class="rule-btn" onclick="removeRule(this)">Remove</button>`;
+        document.getElementById('rules').appendChild(li);
+        document.getElementById('newRule').value='';saveRules();
+      }
+    }
+    function saveRules(){
+      const rules=[...document.querySelectorAll('#rules .rule-text')].map(el=>el.textContent);
+      localStorage.setItem('tradingRules',JSON.stringify(rules));
+    }
+    function loadRules(){
+      const rules=JSON.parse(localStorage.getItem('tradingRules')||'null');
+      if(rules){document.getElementById('rules').innerHTML='';rules.forEach(r=>{
+        const li=document.createElement('li');li.className='rule-item';
+        li.innerHTML=`<span class="rule-text">${r}</span><button class="rule-btn" onclick="removeRule(this)">Remove</button>`;
+        document.getElementById('rules').appendChild(li);
+      });}
+    }
+    loadRules();
+
+    // --- Performance Tracker ---
+    let trades=JSON.parse(localStorage.getItem('trades')||'[]');
+    const tradeTable=document.getElementById('tradeTable');
+    const totalEl=document.getElementById('total');
+    const winsEl=document.getElementById('wins');
+    const lossesEl=document.getElementById('losses');
+    const rateEl=document.getElementById('rate');
+
+    function render(){
+      tradeTable.innerHTML='';
+      let wins=0,losses=0,equity=0,eqData=[],labels=[];
+      trades.forEach((t,i)=>{
+        tradeTable.innerHTML+=`<tr><td>${t.date}</td><td>${t.pair}</td><td>${t.direction}</td><td>${t.result}</td><td>${t.pnl}</td><td><button class='rule-btn' onclick='removeTrade(${i})'>X</button></td></tr>`;
+        if(t.result==='Win') wins++; else losses++;
+        equity+=Number(t.pnl); eqData.push(equity); labels.push(t.date);
+      });
+      totalEl.textContent=trades.length;
+      winsEl.textContent=wins;
+      lossesEl.textContent=losses;
+      rateEl.textContent=(trades.length?((wins/trades.length*100).toFixed(1)):0)+'%';
+
+      if(window.eqChart) window.eqChart.destroy();
+      if(window.wlChart) window.wlChart.destroy();
+      const ctx=document.getElementById('equityChart').getContext('2d');
+      window.eqChart=new Chart(ctx,{type:'line',data:{labels:labels,datasets:[{label:'Equity Curve',data:eqData,fill:false,borderColor:'#10b981',tension:0.3}]}});
+      const ctx2=document.getElementById('winLossChart').getContext('2d');
+      window.wlChart=new Chart(ctx2,{type:'pie',data:{labels:['Wins','Losses'],datasets:[{data:[wins,losses],backgroundColor:['#10b981','#ef4444']}]} });
+    }
+
+    function addTrade(){
+      const date=document.getElementById('date').value;
+      const pair=document.getElementById('pair').value;
+      const direction=document.getElementById('direction').value;
+      const result=document.getElementById('result').value;
+      const pnl=document.getElementById('pnl').value;
+      if(!date||!pair||!pnl) return alert('Please fill all fields');
+      trades.push({date,pair,direction,result,pnl});
+      localStorage.setItem('trades',JSON.stringify(trades));
+      render();
+    }
+
+    function removeTrade(index){
+      trades.splice(index,1);
+      localStorage.setItem('trades',JSON.stringify(trades));
+      render();
+    }
+
+    render();
+  </script>
+</body>
+</html>
